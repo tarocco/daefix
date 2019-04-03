@@ -24,7 +24,7 @@ P.X [0 cm] S.X [1] R.H [0 °]
 P.Y [0 cm] S.Y [1] R.P [0 °]
 P.Z [0 cm] S.Z [1] R.B [0 °]
 ...
-Freeze Rotation
+Freeze Transformation
 P.X [0 cm] S.X [1] R.H [0 °]
 P.Y [0 cm] S.Y [1] R.P [0 °]
 P.Z [0 cm] S.Z [1] R.B [0 °]
