@@ -48,7 +48,7 @@ def parse_name_array_tag(tag_str, contents, lut):
     :param tag_str:
     :param contents:
     :param lut: (dict) lookup table mapping SID to name attributes
-    :return:
+    :return: (bool, string) valid parse, repaired contents
     """
     tag_re = re.compile(r'<name_array ', re.IGNORECASE)
     if tag_re.match(tag_str):
@@ -78,8 +78,6 @@ def run(infile_path, outfile_path=None):
                     else:
                         repaired_pieces.append(piece)
                 working_copy.append(repaired_pieces)
-
-            outfile.seek(0)
             for pieces in working_copy:
                 repaired_pieces = pieces[:1]
                 for piece, next_piece in zip(pieces, pieces[1:]):
