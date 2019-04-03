@@ -4,7 +4,7 @@ Repairs rigged mesh COLLADA .dae files exported from MAXON Cinema 4D so that the
 
 ## Usage
 ```
-daefix.py [-h] infile [outfile]
+python daefix.py [-h] infile [outfile]
 ```
 
 ### What is this for?
