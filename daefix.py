@@ -7,14 +7,7 @@ compatible with Second Life mesh upload.
 
 import re
 import os, sys
-import io
 from argparse import ArgumentParser
-import collada
-from collada import Collada
-from collada.scene import *
-from transforms3d.affines import *
-from transforms3d.quaternions import *
-from math import pi
 
 def parse_joint_tag(tag_str):
     """
@@ -64,98 +57,13 @@ def parse_name_array_tag(tag_str, contents, lut):
     return False, None
 
 
-def recurse_nodes(node):
-    yield node
-    if hasattr(node, 'children'):
-        for n in node.children:
-            yield from recurse_nodes(n)
-
-
-def apply_inplace_rotation_r(node, rotation_mtx):
-    inverse_rotation_mtx = np.linalg.inv(rotation_mtx)
-
-    # Create axis-angle from rotation matrix
-    axis, angle = quat2axangle(mat2quat(rotation_mtx))
-    aax, aay, aaz = axis
-    angle *= 180 / pi  # Yeah we out here
-
-    # Create transform from axis-angle
-    rot = RotateTransform(aax, aay, aaz, angle)
-    node.transforms.insert(1, rot)
-
-    for n in recurse_nodes(node):
-        if not hasattr(n, 'matrix'):
-            return
-        # Decompose node matrix
-        t, r, _, _ = decompose(n.matrix)
-
-        # Apply inverse rotation to current translation
-        t = inverse_rotation_mtx.dot(t)
-        tx, ty, tz = t
-        translate = TranslateTransform(tx, ty, tz)
-
-        # HACK: translate is generally the first transform applied
-        # Remove translate
-        del n.transforms[0]
-        # Add transforms to node to front of list (reverse order)
-        n.transforms.insert(0, translate)
-
-
-def get_all_primitives(node):
-    primitives = set()
-    for n in recurse_nodes(node):
-        if isinstance(n, ControllerNode):
-            controller = n.controller
-            assert(isinstance(controller, collada.controller.Skin))
-            geom = controller.geometry
-            assert(isinstance(geom, collada.geometry.Geometry))
-            prims = geom.primitives
-            for prim in prims:
-                primitives.add((geom, prim))
-    return primitives
-
-
-def rotate_prim(geom, prim, rotation_mtx):
-    if isinstance(prim, collada.geometry.polylist.Polylist):
-        verts = np.apply_along_axis(rotation_mtx.dot, 1, prim.vertex)
-        norms = np.apply_along_axis(rotation_mtx.dot, 1, prim.normal)
-        input_list = prim.getInputList()
-        vert_list = input_list.inputs['VERTEX'][0]
-        norm_list = input_list.inputs['NORMAL'][0]
-        vert_id = vert_list.source[1:] # Remove # mark
-        norm_id = norm_list.source[1:] # Remove # mark
-        vert_source = geom.sourceById[vert_id]
-        norm_source = geom.sourceById[norm_id]
-        vert_source.data = verts
-        norm_source.data = norms
-    return prim
-
-
-def repair_transforms(dae):
-    assert(isinstance(dae, Collada))
-    scene = dae.scene
-    assert(isinstance(scene, collada.scene.Scene))
-    root_nodes = scene.nodes
-    for node in root_nodes:
-        assert(isinstance(node, collada.scene.Node))
-        root_mtx = node.matrix
-        _, root_rot_mtx, _, _ = decompose(root_mtx)
-        root_rot_inverse = np.linalg.inv(root_rot_mtx)
-        apply_inplace_rotation_r(node, root_rot_inverse)
-        primdata = get_all_primitives(node)
-        for geom, prim in primdata:
-            rotate_prim(geom, prim, root_rot_mtx)
-
-
 def run(infile_path, outfile_path=None):
     base, ext = os.path.splitext(infile_path)
     outfile_path = outfile_path or f'{base}-fixed{ext}'
     pieces_re = re.compile(r'(\<[^>]*>)')
     with open(infile_path, 'r', encoding='utf-8') as infile:
         working_copy = []
-        # For some strange reason, pycollada expects BytesIO despite its
-        # documentation mentioning StringIO...???
-        with io.BytesIO() as tempfile:
+        with open(outfile_path, 'w', encoding='utf-8') as outfile:
             sid_to_name = {}
             for line in infile:
                 pieces = pieces_re.split(line)
@@ -179,15 +87,7 @@ def run(infile_path, outfile_path=None):
                     else:
                         repaired_pieces.append(next_piece)
                 repaired_line = ''.join(repaired_pieces)
-                tempfile.write(str.encode(repaired_line, 'utf-8'))
-
-            tempfile.seek(0)
-            dae = Collada(tempfile)
-            repair_transforms(dae)
-            dae.filename = outfile_path
-
-            with open(outfile_path, 'wb') as outfile:
-                dae.write(outfile)
+                outfile.write(repaired_line)
 
 
 
