@@ -1,6 +1,6 @@
 # DAEFix
 
-Repairs rigged mesh COLLADA .dae files exported from MAXON Cinema 4D so that they are compatible with Second Life mesh upload.
+Repairs rigged mesh [COLLADA](https://www.khronos.org/collada/) .dae files exported from [MAXON Cinema 4D](https://www.maxon.net/en-us/products/cinema-4d/overview/) so that they are compatible with [Second Life](https://secondlife.com/) mesh upload.
 
 ## Usage
 ```
